@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sticker Price Calculator</title>
+<style>
+  /* ---------- Design tokens (easy to modify) ---------- */
+  :root {
+    --bg: #f3f4f6;
+    --surface: #ffffff;
+    --text: #1f2328;
+    --muted: #5c6370;
+    --border: #d9dce1;
+    --nelly: #1f2328;      /* Nelly button: dark */
+    --nelly-text: #ffffff;
+    --shop: #ffffff;       /* Shop button: outlined */
+    --shop-text: #1f2328;
+    --error: #b42318;
+    --error-bg: #fdecea;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    line-height: 1.5;
+  }
+
+  main {
+    width: 100%;
+    max-width: 440px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 28px;
+  }
+
+  h1 {
+    margin: 0 0 24px;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .field { margin-bottom: 18px; }
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 1.05rem;
+    color: var(--text);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  input:focus-visible,
+  button:focus-visible {
+    outline: 3px solid #7a8699;
+    outline-offset: 2px;
+  }
+
+  input[aria-invalid="true"] { border-color: var(--error); }
+
+  .buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  button {
+    padding: 14px 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: var(--radius);
+    border: 2px solid var(--nelly);
+    cursor: pointer;
+  }
+
+  #nellyBtn { background: var(--nelly); color: var(--nelly-text); }
+  #shopBtn  { background: var(--shop);  color: var(--shop-text); }
+  button:hover { opacity: 0.85; }
+
+  .error {
+    display: none;
+    margin-top: 18px;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    color: var(--error);
+    background: var(--error-bg);
+    border-radius: var(--radius);
+  }
+  .error.show { display: block; }
+
+  .result {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .result-label { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+  .result-price {
+    margin: 6px 0 0;
+    font-size: clamp(2.6rem, 12vw, 3.6rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .result-note { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; min-height: 1.4em; }
+
+  @media (max-width: 420px) {
+    main { padding: 24px 18px; }
+    .buttons { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <main>
+    <h1>Sticker Price Calculator</h1>
+
+    <div class="field">
+      <label for="width">Width (inches)</label>
+      <input id="width" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 5">
+    </div>
+
+    <div class="field">
+      <label for="height">Height (inches)</label>
+      <input id="height" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 2.5">
+    </div>
+
+    <div class="buttons">
+      <button type="button" id="nellyBtn">Nelly Price</button>
+      <button type="button" id="shopBtn">Shop Price</button>
+    </div>
+
+    <div id="error" class="error" role="alert"></div>
+
+    <section class="result" aria-live="polite">
+      <p class="result-label" id="resultLabel">Price per piece</p>
+      <p class="result-price" id="resultPrice">₱0.00</p>
+      <p class="result-note" id="resultNote"></p>
+    </section>
+  </main>
+
+<script>
+  // ---------- Pricing formulas (do not change) ----------
+  // Nelly: reference 5.5 x 3.3 in = ₱3.00
+  function nellyPrice(width, height) {
+    return (width * height) * (3 / (5.5 * 3.3));
+  }
+
+  // Shop: reference 3 x 3 in, 500 pcs = ₱1,710
+  function shopPrice(width, height) {
+    return (width * height) * (1710 / 500 / 9);
+  }
+
+  // ---------- Helpers ----------
+  const widthInput  = document.getElementById("width");
+  const heightInput = document.getElementById("height");
+  const errorBox    = document.getElementById("error");
+  const priceEl     = document.getElementById("resultPrice");
+  const labelEl     = document.getElementById("resultLabel");
+  const noteEl      = document.getElementById("resultNote");
+
+  function formatPeso(value) {
+    // Round only for display, to exactly two decimals
+    return "₱" + value.toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function showError(message, badInputs) {
+    errorBox.textContent = message;
+    errorBox.classList.add("show");
+    widthInput.setAttribute("aria-invalid", badInputs.includes("w"));
+    heightInput.setAttribute("aria-invalid", badInputs.includes("h"));
+    priceEl.textContent = "₱0.00";
+    labelEl.textContent = "Price per piece";
+    noteEl.textContent = "";
+  }
+
+  function clearError() {
+    errorBox.classList.remove("show");
+    errorBox.textContent = "";
+    widthInput.removeAttribute("aria-invalid");
+    heightInput.removeAttribute("aria-invalid");
+  }
+
+  // Returns a positive finite number, or null if empty / zero / negative / invalid
+  function readDimension(input) {
+    const raw = input.value.trim();
+    if (raw === "") return null;
+    const num = Number(raw);
+    if (!Number.isFinite(num) || num <= 0) return null;
+    return num;
+  }
+
+  function calculate(label, formula) {
+    const w = readDimension(widthInput);
+    const h = readDimension(heightInput);
+
+    const bad = [];
+    if (w === null) bad.push("w");
+    if (h === null) bad.push("h");
+
+    if (bad.length) {
+      showError("Enter a width and height greater than 0 (decimals are allowed).", bad);
+      return;
+    }
+
+    clearError();
+    const price = formula(w, h); // full precision, no intermediate rounding
+    labelEl.textContent = label + " per piece";
+    priceEl.textContent = formatPeso(price);
+    noteEl.textContent = w + " × " + h + " inches";
+  }
+
+  document.getElementById("nellyBtn").addEventListener("click", function () {
+    calculate("Nelly Price", nellyPrice);
+  });
+
+  document.getElementById("shopBtn").addEventListener("click", function () {
+    calculate("Shop Price", shopPrice);
+  });
+</script>
+</body>
+</html>
